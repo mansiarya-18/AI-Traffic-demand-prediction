@@ -1,0 +1,49 @@
+# Traffic Demand Prediction - Approach & Feature Engineering
+
+## Problem
+Predict traffic demand (0-1 normalized) for geographic locations given road/weather/temporal features.
+Evaluation metric: max(e, 100 * R²)
+
+## Tools Used
+- Python 3, pandas, numpy
+- LightGBM (gradient boosted trees) - primary model
+- scikit-learn for cross-validation and metrics
+
+## Feature Engineering
+
+### Temporal Features
+- Parsed `timestamp` (e.g. "0:0") into hour and minute integers
+- Created `time_of_day` = hour*60 + minute (linear time within day)
+- Cyclical encoding: sin/cos of hour (period 24) and day (period 7)
+  to capture circular nature of time (23:00 is close to 0:00)
+
+### Geospatial Features
+- Extracted geohash prefixes at 2, 3, and 4 character granularity
+  for multi-resolution spatial encoding (coarser prefixes = larger regions)
+- Used full geohash as a high-cardinality categorical
+
+### Categorical Features
+- RoadType, LargeVehicles, Landmarks, Weather encoded as categories
+  (LightGBM handles these natively)
+- Missing categoricals filled with 'Unknown'
+
+### Numerical Features
+- Temperature: missing values filled with median
+- NumberofLanes: used directly
+
+## Model
+LightGBM Regressor with:
+- n_estimators=1000, learning_rate=0.05
+- num_leaves=128, min_child_samples=20
+- subsample=0.8, colsample_bytree=0.8
+- L1/L2 regularization (0.1)
+
+## Results
+5-Fold CV R² ≈ 0.9597 ± 0.0020
+Competition score ≈ 95.97
+
+## Key Insights
+- Temporal features (hour, time of day) are the strongest predictors
+- Geohash location is crucial - traffic patterns are highly location-specific
+- Weather and road type provide secondary signal
+- Cyclical encoding of time significantly improves model performance
